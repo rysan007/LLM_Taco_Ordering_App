@@ -13,9 +13,9 @@ A low-latency, multi-LLM conversational AI designed specifically for a Tex-Mex f
 ## **Quick Start**
 
 The TA will run exactly these commands. Make sure they work on a fresh clone with no extra setup.  
-git clone [https://github.com/](https://github.com/)[your-org]/[your-repo].git  
-cd [your-repo]  
-cp .env.example .env  
+git clone [https://github.com/rysan007/LLM_Taco_Ordering_App.git](https://github.com/rysan007/LLM_Taco_Ordering_App.git)
+cd LLM_Taco_Ordering_App
+cp .env.example .env
 # edit .env and fill in the required GEMINI, RETELL, and NGROK keys  
 docker compose up
 
