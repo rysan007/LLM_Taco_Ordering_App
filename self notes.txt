@@ -1,0 +1,25 @@
+STARUP COMMAND:
+uvicorn src.myproject.api:app --reload --env-file .env
+
+FAST CONNECTION TEST:
+locust -f tests/load/locustfile.py --headless -u 10 -r 10 -t 1m --host http://localhost:8000
+
+
+RETELL AI:
+Start your local tunnel: 
+Run "ngrok http 8000" on your machine. You will get a forwarding URL like https://1234-abcd.ngrok.app.
+
+Go to the Retell AI Dashboard: Log into Retell and navigate to the Agents tab. Click Create Agent.
+
+Select Custom LLM: When asked how you want to build the agent, choose Custom LLM.
+
+Paste your Webhook: In the LLM WebSocket URL field, paste your ngrok URL, change the https to wss (WebSocket Secure), and add our endpoint path. It should look exactly like this:
+wss://1234-abcd.ngrok.app/llm-websocket
+
+Call the Bot: Retell will instantly generate a phone number for that Agent. You can also click the "Test Chat" or "Call" button directly in the Retell web dashboard to talk to it through your browser microphone.
+
+OR USE DOCKER:
+docker compose up --build
+
+INTO RETELL AI DASHBOARD:
+wss://pentagram-activity-crawling.ngrok-free.dev/llm-websocket

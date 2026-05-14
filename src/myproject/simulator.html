@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Trompo Voice Agent Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-bubble-agent { background-color: #ffffff; color: #111827; border-bottom-left-radius: 0; border: 1px solid #e5e7eb; }
+        .chat-bubble-user { background-color: #ec4899; color: white; border-bottom-right-radius: 0; margin-left: auto; }
+        .status-badge { font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 9999px; font-weight: bold; }
+        .status-confirmed { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .status-pending { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .status-denied { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    </style>
+</head>
+<body class="bg-gray-200 h-screen font-sans py-6">
+    <div class="container mx-auto h-full flex gap-6 max-w-7xl">
+        
+        <!-- Left: Chat Interface -->
+        <div class="w-1/2 bg-slate-50 rounded-2xl shadow-xl flex flex-col border border-slate-300 overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-200">
+                <h2 class="text-xl font-bold text-slate-800">🌮 Order Chat</h2>
+                <div class="flex gap-2">
+                    <button id="toggleVoiceBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-md transition transform active:scale-95">
+                        🎤 Start Voice
+                    </button>
+                    <button id="resetBtn" class="bg-slate-300 hover:bg-slate-400 text-slate-800 px-4 py-2 rounded-lg font-bold transition transform active:scale-95">
+                        Reset Call
+                    </button>
+                </div>
+            </div>
+            
+            <div id="chatLog" class="flex-1 p-5 overflow-y-auto flex flex-col gap-4 bg-slate-100 inner-shadow">
+            </div>
+            
+            <div class="p-4 border-t border-slate-300 bg-slate-200">
+                <form id="chatForm" class="flex gap-3">
+                    <input type="text" id="chatInput" placeholder="Type an order manually..." class="flex-1 px-4 py-3 rounded-xl border-2 border-slate-300 focus:outline-none focus:border-pink-500 shadow-inner text-slate-800" autocomplete="off">
+                    <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-xl font-bold shadow-md transition transform active:scale-95">Send</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right: Dynamic Cart & Kitchen Tablet -->
+        <div class="w-1/2 flex flex-col gap-6">
+            <div class="bg-emerald-50 rounded-2xl shadow-xl border border-emerald-200 flex-1 flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-emerald-200 bg-emerald-100 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-emerald-900">🛒 Active Cart</h2>
+                    <span class="text-xs font-bold text-emerald-600 bg-emerald-200 px-2 py-1 rounded-full uppercase tracking-wide">Live Sync</span>
+                </div>
+                <div id="cartItems" class="p-4 flex-1 overflow-y-auto">
+                    <p class="text-emerald-600/50 text-center mt-10 font-medium">Cart is empty.</p>
+                </div>
+                <div class="p-5 border-t border-emerald-300 bg-emerald-900 text-white flex justify-between items-center shadow-inner">
+                    <span class="text-lg font-medium text-emerald-100">Total:</span>
+                    <span id="cartTotal" class="text-3xl font-black text-white drop-shadow-md">$0.00</span>
+                </div>
+            </div>
+
+            <div class="bg-amber-50 rounded-2xl shadow-xl border border-amber-200 overflow-hidden">
+                <div class="p-4 border-b border-amber-200 bg-amber-100">
+                    <h2 class="text-lg font-bold text-amber-900">👨‍🍳 Kitchen Approval (HITL)</h2>
+                    <p class="text-xs text-amber-700 mt-1">Special requests appear here for manual review.</p>
+                </div>
+                <div id="kitchenTablet" class="p-4 flex flex-col gap-3 min-h-[160px] bg-amber-50/50">
+                    <p class="text-amber-600/50 text-center text-sm mt-6 font-medium">No pending requests.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN SCRIPT -->
+    <script>
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/chat`);
+        
+        const chatLog = document.getElementById('chatLog');
+        const chatForm = document.getElementById('chatForm');
+        const chatInput = document.getElementById('chatInput');
+        const cartItemsDiv = document.getElementById('cartItems');
+        const cartTotalSpan = document.getElementById('cartTotal');
+        const kitchenTablet = document.getElementById('kitchenTablet');
+        const resetBtn = document.getElementById('resetBtn');
+        const callId = "call_" + Math.random().toString(36).substr(2, 9);
+
+        function addMessage(text, isUser = false) {
+            const div = document.createElement('div');
+            div.className = `max-w-[80%] rounded-2xl px-5 py-3 shadow-md ${isUser ? 'chat-bubble-user font-medium' : 'chat-bubble-agent'}`;
+            const label = isUser ? 'You' : 'System';
+            div.innerHTML = `<div class="text-xs opacity-50 mb-1 font-bold uppercase tracking-wider">${label}</div><div>${text}</div>`;
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        function renderCart(items, total) {
+            cartTotalSpan.textContent = `$${total.toFixed(2)}`;
+            if (!items || items.length === 0) {
+                cartItemsDiv.innerHTML = '<p class="text-emerald-600/50 text-center mt-10 font-medium">Cart is empty.</p>';
+                kitchenTablet.innerHTML = '<p class="text-amber-600/50 text-center text-sm mt-6 font-medium">No pending requests.</p>';
+                return;
+            }
+
+            cartItemsDiv.innerHTML = '';
+            kitchenTablet.innerHTML = '';
+            let pendingCount = 0;
+
+            items.forEach(item => {
+                let modsHtml = item.tracked_modifiers.map(m => `<li class="text-sm text-emerald-700">+ ${m}</li>`).join('');
+                let specialHtml = item.special_instructions.map(m => `<li class="text-sm text-pink-600 font-medium">Special: ${m}</li>`).join('');
+                let badgeClass = item.status === 'confirmed' ? 'status-confirmed' : (item.status === 'pending_hitl' ? 'status-pending' : 'status-denied');
+
+                cartItemsDiv.innerHTML += `
+                    <div class="mb-3 pb-3 border-b border-emerald-200/50 last:border-0 flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-emerald-900 text-lg">${item.qty}x ${item.name}</div>
+                            <ul class="ml-5 mt-1 list-disc marker:text-emerald-400">${modsHtml}${specialHtml}</ul>
+                        </div>
+                        <div class="flex flex-col items-end gap-2">
+                            <span class="font-bold text-emerald-800">$${(item.price * item.qty).toFixed(2)}</span>
+                            <span class="status-badge ${badgeClass} shadow-sm">${item.status.toUpperCase()}</span>
+                        </div>
+                    </div>
+                `;
+
+                if (item.status === 'pending_hitl') {
+                    pendingCount++;
+                    kitchenTablet.innerHTML += `
+                        <div class="bg-white p-4 rounded-xl border border-amber-300 shadow-sm flex flex-col gap-3">
+                            <div>
+                                <span class="font-bold text-amber-900">${item.name}</span>
+                                <div class="text-sm text-amber-800 font-medium bg-amber-100 px-3 py-2 rounded-md mt-2">Request: "${item.special_instructions.join(', ')}"</div>
+                            </div>
+                            <div class="flex gap-2 w-full">
+                                <button onclick="handleWebhook('${item.uid}', true)" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg text-sm font-bold shadow-sm transition transform active:scale-95">✓ Approve</button>
+                                <button onclick="handleWebhook('${item.uid}', false)" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-bold shadow-sm transition transform active:scale-95">✗ Deny</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            if (pendingCount === 0) kitchenTablet.innerHTML = '<p class="text-amber-600/50 text-center text-sm mt-6 font-medium">No pending requests.</p>';
+        }
+
+        window.handleWebhook = async function(uid, approved) {
+            await fetch('/api/kitchen/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ internal_uid: uid, approved: approved }) });
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            // --- Smart UI replacing for Stumbles/Barge-ins ---
+            if (data.event === "user_transcript") {
+                if (data.is_barge_in) {
+                    const bubbles = chatLog.children;
+                    let lastUserIdx = -1;
+                    for (let i = bubbles.length - 1; i >= 0; i--) {
+                        if (bubbles[i].classList.contains('chat-bubble-user')) {
+                            lastUserIdx = i;
+                            break;
+                        }
+                    }
+                    if (lastUserIdx !== -1) {
+                        // Remove orphaned system stall bubbles
+                        while (chatLog.children.length > lastUserIdx + 1) {
+                            chatLog.removeChild(chatLog.lastChild);
+                        }
+                        chatLog.children[lastUserIdx].innerHTML = `<div class="text-xs opacity-50 mb-1 font-bold uppercase tracking-wider">You</div><div>${data.text}</div>`;
+                        chatLog.scrollTop = chatLog.scrollHeight;
+                    } else {
+                        addMessage(data.text, true);
+                    }
+                } else {
+                    addMessage(data.text, true); 
+                }
+            }
+            else if (data.response_text) {
+                addMessage(data.response_text, false);
+            }
+            
+            if (data.cart_items) {
+                renderCart(data.cart_items, data.cart_total);
+            }
+        };
+
+        chatForm.onsubmit = (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text) return;
+            addMessage(text, true);
+            ws.send(JSON.stringify({ event: "text", transcript: text, call_id: callId }));
+            chatInput.value = '';
+        };
+
+        resetBtn.onclick = () => {
+            chatLog.innerHTML = '';
+            ws.send(JSON.stringify({ event: "reset", call_id: callId }));
+        };
+
+        // --- BULLETPROOF VOICE LOGIC ---
+        const toggleVoiceBtn = document.getElementById('toggleVoiceBtn');
+        let retellWebClient = null;
+        let isCalling = false;
+
+        toggleVoiceBtn.addEventListener('click', async () => {
+            if (isCalling && retellWebClient) {
+                retellWebClient.stopCall();
+                return; 
+            } 
+            
+            try {
+                toggleVoiceBtn.innerHTML = "⏳ Loading SDK...";
+                toggleVoiceBtn.disabled = true;
+
+                if (!retellWebClient) {
+                    const module = await import("https://esm.run/retell-client-js-sdk");
+                    retellWebClient = new module.RetellWebClient();
+                    
+                    retellWebClient.on("call_started", () => {
+                        console.log("Voice call connected.");
+                    });
+
+                    retellWebClient.on("call_ended", () => {
+                        console.log("Voice call ended.");
+                        isCalling = false;
+                        toggleVoiceBtn.innerHTML = "🎤 Start Voice";
+                        toggleVoiceBtn.classList.replace("bg-red-500", "bg-indigo-600");
+                        toggleVoiceBtn.classList.replace("hover:bg-red-600", "hover:bg-indigo-700");
+                    });
+
+                    retellWebClient.on("error", (error) => {
+                        console.error("Retell Error:", error);
+                        if(retellWebClient) retellWebClient.stopCall();
+                    });
+                }
+
+                toggleVoiceBtn.innerHTML = "⏳ Connecting...";
+                const response = await fetch('/api/create-web-call', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.error) {
+                    alert("Voice Error: " + data.error + "\nMake sure RETELL_API_KEY and RETELL_AGENT_ID are in your .env file!");
+                    toggleVoiceBtn.innerHTML = "🎤 Start Voice";
+                    toggleVoiceBtn.disabled = false;
+                    return;
+                }
+
+                await retellWebClient.startCall({ accessToken: data.access_token });
+                isCalling = true;
+                toggleVoiceBtn.innerHTML = "⏹️ End Call";
+                toggleVoiceBtn.classList.replace("bg-indigo-600", "bg-red-500");
+                toggleVoiceBtn.classList.replace("hover:bg-indigo-700", "hover:bg-red-600");
+                toggleVoiceBtn.disabled = false;
+
+            } catch (err) {
+                console.error("Voice Connection Error:", err);
+                alert("Failed to connect Voice Client.\nError: " + err.message);
+                toggleVoiceBtn.innerHTML = "🎤 Start Voice";
+                toggleVoiceBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
