@@ -1,62 +1,10 @@
 graph TD
-%% External Actors
-UserVoice([User Voice via Phone])
-TA([TA via Browser])
-Kitchen([Kitchen Operator])
-%% Interfaces
-Retell[Retell AI Cloud]
-Ngrok[ngrok Tunnel]
-Simulator[Local HTML Simulator]
-Tablet[Kitchen Tablet UI]
-
-%% Internal API Boundary
-subgraph "FastAPI Application (src/myproject/api.py)"
-    WS_Endpoint["/ws/chat (WebSocket)"]
-    Webhook_Endpoint["/api/kitchen/webhook (POST)"]
-    Logger[JSON Correlation Logger]
-end
-
-%% Agent Core
-subgraph "Dual-LLM Agent Core"
-    Sys1[System 1: ForegroundAgent]
-    Sys2[System 2: BackgroundOrchestrator]
-    Cache[(Exact Match Cache)]
-    Menu[(Menu Index)]
-    State[(Cart Manager)]
-end
-
-%% External LLM
-GeminiFlash((Gemini 2.5 Flash))
-GeminiPro((Gemini 2.5 Pro))
-
-%% Routing - The Live Retell Path
-UserVoice -->|Audio| Retell
-Retell -->|JSON WebSocket| Ngrok
-Ngrok -->|JSON WebSocket| WS_Endpoint
-
-%% Routing - The TA Simulator Path
-TA -->|Clicks/Text| Simulator
-Simulator -->|JSON WebSocket| WS_Endpoint
-
-%% Routing - The Kitchen Path
-Kitchen -->|Approve/Deny| Tablet
-Tablet -->|JSON POST| Webhook_Endpoint
-
-%% Internal Data Flow
-WS_Endpoint -->|Extract call_id| Logger
-Logger --> Sys1
-
-Sys1 -->|Check| Cache
-Sys1 <-->|Read| Menu
-Sys1 <-->|Prompt| GeminiFlash
-
-Sys1 -->|Audio Transcript & Barge-in Flag| Sys2
-Sys2 <-->|Prompt| GeminiPro
-Sys2 -->|JSON State Update| State
-
-Webhook_Endpoint -->|Status Update| State
-State -.->|Updated Context| Sys1
-
-Sys1 -->|Text to Speak| WS_Endpoint
-
-
+User[User Voice / Browser] <-->|WebRTC Audio| Retell[Retell AI]
+Retell <-->|WebSocket /llm-websocket| API[FastAPI api.py]
+API -->|Raw Transcript| Sys1[System 1: Foreground Agent]
+Sys1 -->|Fast Stall Phrase| API
+API -->|Transcript History| Sys2[System 2: Background Orchestrator]
+Sys2 -->|JSON Directives| State[Cart Manager state.py]
+State -->|Updated Cart State| API
+API -->|WebSocket /ws/chat| UI[Simulator Frontend]
+Kitchen[Kitchen Tablet Webhook] -->|Approve/Deny HTTP POST| API

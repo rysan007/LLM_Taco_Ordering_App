@@ -1,0 +1,14 @@
+{
+  "final_total": 0.0,
+  "final_cart": [],
+  "conversation": [
+    {
+      "role": "user",
+      "text": "checkout"
+    },
+    {
+      "role": "agent",
+      "text": "$0.00"
+    }
+  ]
+}

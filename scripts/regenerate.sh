@@ -48,20 +48,20 @@ echo "[regen] building prompt from $PROMPT_TEMPLATE + $SPEC"
 PROMPT_FILE="$(mktemp)"
 trap 'rm -f "$PROMPT_FILE"' EXIT
 
-python3 - "$PROMPT_TEMPLATE" "$SPEC" "$PROMPT_FILE" <<'PYEOF'
+python - "$PROMPT_TEMPLATE" "$SPEC" "$PROMPT_FILE" <<'PYEOF'
 import sys, pathlib
 template_path, spec_path, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
-template = pathlib.Path(template_path).read_text()
-spec = pathlib.Path(spec_path).read_text()
+template = pathlib.Path(template_path).read_text(encoding="utf-8")
+spec = pathlib.Path(spec_path).read_text(encoding="utf-8")
 prompt = template.replace("{{SPEC_CONTENT}}", spec)
-pathlib.Path(out_path).write_text(prompt)
+pathlib.Path(out_path).write_text(prompt, encoding="utf-8")
 PYEOF
 
 # Step 2. Call the Anthropic API with pinned config
 echo "[regen] calling Anthropic API (model=$MODEL temperature=$TEMPERATURE)"
 RESPONSE_FILE="$OUTPUT_DIR/api_response.json"
 
-python3 - "$PROMPT_FILE" "$RESPONSE_FILE" "$MODEL" "$TEMPERATURE" "$MAX_TOKENS" <<'PYEOF'
+python - "$PROMPT_FILE" "$RESPONSE_FILE" "$MODEL" "$TEMPERATURE" "$MAX_TOKENS" <<'PYEOF'
 import sys, os, json, urllib.request
 
 prompt_path, response_path, model, temperature, max_tokens = sys.argv[1:6]
@@ -89,7 +89,7 @@ PYEOF
 
 # Step 3. Parse the file blocks out of the response into regenerated/src/...
 echo "[regen] parsing file blocks into $OUTPUT_DIR/"
-python3 - "$RESPONSE_FILE" "$OUTPUT_DIR" <<'PYEOF'
+python - "$RESPONSE_FILE" "$OUTPUT_DIR" <<'PYEOF'
 import sys, json, pathlib, re
 
 response_path, out_dir = sys.argv[1], sys.argv[2]
@@ -119,7 +119,7 @@ for m in matches:
         continue
     target = pathlib.Path(out_dir) / rel
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(m.group("body"))
+    target.write_text(m.group("body"), encoding="utf-8")
     count += 1
     print(f"  wrote {target}")
 
@@ -141,7 +141,7 @@ PYTHONPATH="$OUTPUT_DIR/src:$PYTHONPATH" \
 
 # Step 5. Summarize
 echo "[regen] summarizing results into reports/regeneration.md"
-python3 - "reports/regenerated_user_stories.xml" "reports/regeneration.md" <<'PYEOF'
+python - "reports/regenerated_user_stories.xml" "reports/regeneration.md" <<'PYEOF'
 import sys, xml.etree.ElementTree as ET, pathlib, datetime
 
 xml_path, md_path = sys.argv[1], sys.argv[2]
@@ -149,7 +149,7 @@ try:
     root = ET.parse(xml_path).getroot()
 except (FileNotFoundError, ET.ParseError) as e:
     pathlib.Path(md_path).write_text(
-        f"# Regeneration Report\n\nGeneration produced no parseable test results.\nError: {e}\n"
+        f"# Regeneration Report\n\nGeneration produced no parseable test results.\nError: {e}\n", encoding="utf-8"
     )
     sys.exit(0)
 
@@ -177,7 +177,7 @@ Rubric thresholds: ≥90% earns full credit; <50% scores zero. Between is propor
 
 See reports/regenerated_user_stories.xml for per-test detail.
 """
-pathlib.Path(md_path).write_text(md)
+pathlib.Path(md_path).write_text(md, encoding="utf-8")
 print(md)
 PYEOF
 

@@ -32,6 +32,7 @@ sys1 = ForegroundAgent(api_key=api_key, cart_manager=cart_manager)
 sys2 = BackgroundOrchestrator(cart_manager=cart_manager, api_key=api_key)
 
 connected_clients = set()
+active_text_histories = []
 SDK_CACHE = None
 
 
@@ -147,6 +148,7 @@ async def chat_endpoint(websocket: WebSocket):
     connected_clients.add(websocket)
     current_sys2_task = None
     turn_history = []
+    active_text_histories.append(turn_history)
     turn_counter = 0
     call_id = "unknown_call"
     call_state = {"is_active": True, "timeout_stage": 0}
@@ -161,11 +163,15 @@ async def chat_endpoint(websocket: WebSocket):
         while True:
             try:
                 if call_state["is_active"]:
-                    data = await asyncio.wait_for(websocket.receive_json(), timeout=15.0)
+                    data = await asyncio.wait_for(websocket.receive_json(), timeout=60.0)
                     call_state["timeout_stage"] = 0
                 else:
                     data = await websocket.receive_json()
             except TimeoutError:
+                # ADDED: If System 2 is currently thinking, don't penalize the user for the wait!
+                if current_sys2_task and not current_sys2_task.done():
+                    continue
+
                 if call_state["is_active"] and turn_counter > 0:
                     call_state["timeout_stage"] += 1
                     if call_state["timeout_stage"] == 1:
@@ -202,7 +208,8 @@ async def chat_endpoint(websocket: WebSocket):
                 if current_sys2_task and not current_sys2_task.done():
                     current_sys2_task.cancel()
                 current_sys2_task = None
-                turn_history, turn_counter = [], 0
+                turn_history.clear()
+                turn_counter = 0
                 call_state = {"is_active": True, "timeout_stage": 0}
 
                 payload = {"event": "reset_success", "response_text": greeting}
@@ -244,6 +251,8 @@ async def chat_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         _save_conversation_log(call_id, turn_history)
     finally:
+        if turn_history in active_text_histories:
+            active_text_histories.remove(turn_history)
         connected_clients.discard(websocket)
 
 
@@ -447,5 +456,8 @@ async def kitchen_webhook(payload: WebhookPayload):
             out_payload = {"event": "response", "response_text": speech}
             out_payload.update(_build_cart_payload())
             await ws.send_json(out_payload)
+
+        for hist in active_text_histories:
+            hist.append({"role": "agent", "text": speech})
 
     return {"status": "success" if success else "error"}

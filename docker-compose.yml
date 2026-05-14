@@ -9,10 +9,10 @@ services:
       - "${APP_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      interval: 2s      # <-- Check every 2 seconds instead of 10
+      timeout: 3s       # <-- Fail fast if no response
+      retries: 5        # <-- Allow a few quick retries
+      start_period: 3s  # <-- Only wait 3 seconds before counting failures
     restart: unless-stopped
 
   # As approved by the instructor: Ngrok tunnel for Retell AI WebSockets

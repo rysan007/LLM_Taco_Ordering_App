@@ -1,34 +1,59 @@
-# grading/traceability.yaml
-#
-# Maps every user story to its spec section, its source modules, and its tests.
-# The grading script reads this file directly. Every story ID in
-# docs/STORIES.md must appear here exactly once.
+# Traceability Matrix
+# Maps User Stories to the Specification and the Codebase.
 
-- story_id: US-01
-  spec_section: "4.1 HTTP API and 4.2 Python interfaces"
-  source_modules:
-    - src/myproject/api.py
-    - src/myproject/router.py
-    - src/myproject/retriever.py
-    - src/myproject/generator.py
-  tests:
-    - tests/user_stories/test_us_01.py
-    - tests/integration/test_query_pipeline.py
+US-01:
+  description: "User orders standard items and receives immediate stall feedback"
+  spec_sections: 
+    - "4.1 Data Models"
+    - "4.3 HTTP and WebSocket API"
+    - "6.1 Foreground Agent"
+  modules: 
+    - "src/myproject/api.py"
+    - "src/myproject/system1.py"
+    - "src/myproject/state.py"
+  tests: 
+    - "tests/user_stories/test_us_01.py"
 
-- story_id: US-02
-  spec_section: "4.1 HTTP API (error response)"
-  source_modules:
-    - src/myproject/api.py
-  tests:
-    - tests/user_stories/test_us_02.py
-    - tests/edge/test_empty_input.py
+US-02:
+  description: "HITL Special Request Approval"
+  spec_sections: 
+    - "4.3 HTTP and WebSocket API"
+    - "6.2 Background Orchestrator"
+  modules: 
+    - "src/myproject/api.py"
+    - "src/myproject/system2.py"
+    - "src/myproject/state.py"
+  tests: 
+    - "tests/user_stories/test_us_02.py"
 
-- story_id: US-03
-  spec_section: "6 Configuration"
-  source_modules:
-    - src/myproject/api.py
-    - src/myproject/generator.py
-  tests:
-    - tests/user_stories/test_us_03.py
+US-03:
+  description: "[ERROR PATH] System rejects off-menu requests politely"
+  spec_sections: 
+    - "5. Explicit Domain Data"
+    - "6.2 Background Orchestrator"
+  modules: 
+    - "src/myproject/system2.py"
+    - "src/myproject/menu.py"
+  tests: 
+    - "tests/user_stories/test_us_03.py"
 
-# Add one entry per story in docs/STORIES.md
+US-04:
+  description: "[ERROR PATH] Kitchen denies a Human-in-the-Loop (HITL) request"
+  spec_sections: 
+    - "4.2 State Management"
+    - "6.2 Background Orchestrator"
+  modules: 
+    - "src/myproject/api.py"
+    - "src/myproject/system2.py"
+    - "src/myproject/state.py"
+  tests: 
+    - "tests/user_stories/test_us_04.py"
+
+US-05:
+  description: "Explicit Semantic Checkout with read-back"
+  spec_sections: 
+    - "6.2 Background Orchestrator"
+  modules: 
+    - "src/myproject/system2.py"
+  tests: 
+    - "tests/user_stories/test_us_05.py"

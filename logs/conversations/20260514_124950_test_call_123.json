@@ -1,0 +1,21 @@
+{
+  "final_total": 4.0,
+  "final_cart": [
+    {
+      "internal_uid": "hitl_integration_1",
+      "item_id": "taco_pastor",
+      "qty": 1,
+      "tracked_modifiers": [],
+      "special_instructions": [
+        "super spicy"
+      ],
+      "status": "confirmed"
+    }
+  ],
+  "conversation": [
+    {
+      "role": "user",
+      "text": "hello"
+    }
+  ]
+}

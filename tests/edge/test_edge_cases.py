@@ -3,6 +3,7 @@
 The application must gracefully handle malformed, extreme, or adversarial
 inputs without crashing (HTTP 5xx or unhandled WebSocket disconnects).
 """
+
 from fastapi.testclient import TestClient
 
 from src.myproject.api import app
@@ -42,7 +43,9 @@ def test_non_ascii_multilingual_input_does_not_crash():
     with TestClient(app) as client, client.websocket_connect("/ws/chat") as websocket:
         websocket.receive_json()
 
-        websocket.send_json({"event": "text", "transcript": multilingual_input, "call_id": "edge_3"})
+        websocket.send_json(
+            {"event": "text", "transcript": multilingual_input, "call_id": "edge_3"}
+        )
         response = websocket.receive_json()
 
         assert "response_text" in response
