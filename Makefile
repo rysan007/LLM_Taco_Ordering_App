@@ -17,7 +17,7 @@ test:
 
 # Run the load test against the local simulator (Stress pillar: 6 pts)
 loadtest:
-	locust -f tests/load/locustfile.py --headless -u 10 -r 10 -t 1m --host http://localhost:8000
+	locust -f tests/load/locustfile.py --headless -u 50 -r 10 --run-time 1m --host http://localhost:8080 --csv=reports/benchmarks
 
 # Mock targets to satisfy the rubric's 'make reproduce' requirements
 download-data:
@@ -27,7 +27,7 @@ download-models:
 	@echo "Using Google GenAI API. Models do not require local download."
 
 # The single command full replay (Design pillar: 10 pts)
-reproduce: download-data download-models lint test
+reproduce: download-data download-models lint test loadtest
 	@echo "Reproducibility pipeline completed."
 
 # A script to exercise all user stories end-to-end

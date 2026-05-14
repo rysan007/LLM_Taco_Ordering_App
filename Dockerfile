@@ -34,7 +34,7 @@ RUN pip install --user -e .
 EXPOSE 8080
 
 # Health endpoint must respond 200; docker-compose health check uses this
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=2s --timeout=3s --start-period=3s --retries=5 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)" || exit 1
 
 # Run application
