@@ -1,66 +1,66 @@
-# Reproducibility Procedure
+# **Reproducibility Procedure**
 
-> The TA runs `make reproduce` to verify your headline numbers. This document
-> tells the TA what to expect.
+The TA runs make reproduce to verify your headline numbers. This document  
+tells the TA what to expect.
 
-## Procedure
+## **Procedure**
 
-```bash
-# From a fresh clone with .env populated
+# From a fresh clone with .env populated  
 make reproduce
-```
 
-`make reproduce` performs these steps in order:
+make reproduce performs these steps in order:
 
-1. `make download-data` — fetches the datasets listed in `docs/DATA.md`
-2. `make download-models` — fetches model checkpoints listed in `docs/MODELS.md`
-3. Runs the application pipeline on a sample input
-4. Runs `make test` (unit + integration + user story + edge)
-5. Reports pass/fail per phase
+1. make download-data — No-op (Menu is hardcoded to prevent hallucinations).  
+2. make download-models — No-op (Models are accessed via Gemini API).  
+3. Runs make lint to verify code formatting and types (Ruff, Black, Mypy).  
+4. Runs make test to execute the full Pytest suite (unit + integration + user story + coverage).  
+5. Runs make loadtest to benchmark the simulated HTTP application performance via Locust.
 
-## Hardware Profile
+## **Hardware Profile**
 
 The headline numbers were measured on:
 
-- CPU: Intel x86_64, 8 cores
-- Memory: 16 GB
-- Disk: 50 GB free
-- Network: required for model and dataset downloads
-- GPU: not required
+* CPU: Intel x86_64, 8 cores  
+* Memory: 32 GB  
+* Disk: 50 GB free  
+* Network: required for Google Gemini and Retell AI API access.  
+* GPU: not required (Cloud-hosted LLMs)
 
-## Expected Wall Clock
+## **Expected Wall Clock**
 
-- Total `make reproduce` runtime: under 30 minutes on the documented hardware
-- Of which `docker compose up` to healthy is under 10 minutes (Build category)
-- Data and model download: 5 to 10 minutes depending on network
-- Test suite: under 5 minutes
+* Total make reproduce runtime: under 15 minutes on the documented hardware.  
+* Of which docker compose up to healthy is under 10 minutes (Build category).  
+* Data and model download: 0 minutes (API-based).  
+* Test suite: under 2 minutes.  
+* Load test suite: exactly 1 minute (--run-time 1m).
 
-## Expected Outputs
+## **Expected Outputs**
 
-After `make reproduce` completes, the following files exist:
+After make reproduce completes, the following files exist:
 
-- `reports/unit.xml` — unit test results
-- `reports/integration.xml` — integration test results
-- `reports/user_stories.xml` — user story acceptance test results
-- `reports/edge.xml` — edge case test results
-- `reports/coverage.xml` — coverage report
-- `reports/coverage_html/index.html` — coverage browser
+* reports/unit.xml — unit test results  
+* reports/integration.xml — integration test results  
+* reports/user_stories.xml — user story acceptance test results  
+* reports/coverage.xml — coverage report  
+* reports/coverage_html/index.html — coverage browser  
+* reports/benchmarks_stats.csv — load test statistics  
+* reports/security.txt — pip-audit vulnerability report
 
-## Expected Metric Values
+## **Expected Metric Values**
 
-These are the headline numbers reported in `README.md`. The TA's reproduction
+These are the headline numbers reported in README.md. The TA's reproduction  
 must match within the stated tolerance.
 
 | Metric | Expected | Tolerance | Where measured |
-|---|---|---|---|
-| Accuracy on dev set | 0.85 | ± 0.02 | `reports/eval.json` |
-| F1 score | 0.81 | ± 0.02 | `reports/eval.json` |
-| p95 latency (single query) | 240 ms | ± 50 ms | `reports/benchmarks.json` |
+| :---- | :---- | :---- | :---- |
+| Load Test Throughput (Simulated) | 152 req/s | ≥ 10 req/s | reports/benchmarks_stats.csv |
+| Load Test Error Rate | 0.0% | < 5.0% | reports/benchmarks_stats.csv |
+| Foreground Audio TTFT (System 1) | ~350 ms | ± 100 ms | Live System Observation |
 
-## Outside Tolerance?
+## **Outside Tolerance?**
 
 If a metric drifts outside the documented tolerance:
 
-- The Reproducibility test row scores 5/10 instead of 10/10.
-- The team is expected to investigate and document the cause in
-  `reports/known_issues.md` if the deadline has not passed.
+* The Reproducibility test row scores 5/10 instead of 10/10.  
+* The team is expected to investigate and document the cause in  
+  reports/known_issues.md if the deadline has not passed.
